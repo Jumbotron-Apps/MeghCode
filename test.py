@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-cap = cv2.VideoCapture('sample1.mp4')#Video file directory must go here
+cap = cv2.VideoCapture('sample1.mp4')  # Video file directory must go here
 
 if not cap.isOpened():
     print("Error: Couldn't open the video.")
@@ -16,6 +16,8 @@ lk_params = dict(winSize=(40, 40),
                  criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 20, 0.01))
 
 # Mouse function
+
+
 def select_point(event, x, y, flags, params):
     global point, point_selected, old_points, paused, rectangle_coords
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -28,6 +30,7 @@ def select_point(event, x, y, flags, params):
     #     cv2.rectangle(frame, (x, y), (x + 50, y + 120), (0, 255, 0), 2)
     #     region_inside_rectangle = frame[y:y+120, x:x+50]
     #     cv2.imwrite('region_inside_rectangle_image.jpg', region_inside_rectangle)
+
 
 cv2.namedWindow("Frame")
 cv2.setMouseCallback("Frame", select_point)
@@ -49,13 +52,15 @@ while True:
             break
 
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray_frame = cv2.GaussianBlur(gray_frame, (5, 5), 0)  # Apply GaussianBlur
+        gray_frame = cv2.GaussianBlur(
+            gray_frame, (5, 5), 0)  # Apply GaussianBlur
 
         if point_selected is True:
             cv2.circle(frame, point, 5, (0, 0, 2575), )
 
             if old_points is not None:
-                new_points, status, error = cv2.calcOpticalFlowPyrLK(old_gray, gray_frame, old_points, None, **lk_params)
+                new_points, status, error = cv2.calcOpticalFlowPyrLK(
+                    old_gray, gray_frame, old_points, None, **lk_params)
 
                 if status is not None and all(status.flatten()):
                     old_points = new_points
@@ -74,6 +79,3 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
-
-
-
