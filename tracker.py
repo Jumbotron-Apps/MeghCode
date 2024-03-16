@@ -17,6 +17,7 @@ def select_device():
 
 
 def select_object(frame, model, tracker_config):
+    processed_frame = cv.resize(frame, (frame.shape[1] // 2, frame.shape[0] // 2))
     results = model.track(frame, tracker=tracker_config,
                           persist=True, device=select_device())
     annotated_frame = results[0].plot()
@@ -27,7 +28,8 @@ def select_object(frame, model, tracker_config):
             distances = np.sqrt(
                 (boxes[:, 0] - x) ** 2 + (boxes[:, 1] - y) ** 2)
             selected_idx = np.argmin(distances)
-            selected_id = results[0].boxes.cpu().numpy().id[selected_idx].item()
+            selected_id = results[0].boxes.cpu(
+            ).numpy().id[selected_idx].item()
             params['selected_id'] = selected_id
             params['clicked'] = True
 
@@ -49,31 +51,41 @@ def process_video(video_path, model, tracker_config, selected_id):
         logging.error("Error opening video file")
         return
 
+    frame_count = 0
+    last_box = None
+
     while cap.isOpened():
         if cv.waitKey(25) & 0xFF == ord('q'):
-                break
+            break
         success, frame = cap.read()
         if not success:
             break
 
         start = time.perf_counter()
-        results = model.track(frame, tracker=tracker_config,
-                              persist=True, device=select_device())
+
+        if frame_count % 1 == 0:
+            processed_frame = cv.resize(frame, (frame.shape[1] // 2, frame.shape[0] // 2))
+            results = model.track(frame, tracker=tracker_config,
+                                  persist=True, device=select_device())
+            for result in results:
+                boxes = result.boxes.cpu().numpy()
+                if selected_id in boxes.id:
+                    idx = boxes.id.tolist().index(selected_id)
+                    last_box = (boxes[idx].xyxy[0] * 1).tolist()
+
+        if last_box is not None:
+            cv.rectangle(
+                frame, (int(last_box[0]), int(last_box[1])), (int(last_box[2]), int(last_box[3])), (0, 255, 0), 2)
+
         end = time.perf_counter()
         fps = 1 / (end - start)
         # annotated_frame = results[0].plot()
 
-        for result in results:
-            boxes = result.boxes.cpu().numpy()
-            if selected_id in boxes.id:
-                idx = boxes.id.tolist().index(selected_id)
-                box = boxes[idx].xyxy[0].tolist()
-                cv.rectangle(
-                    frame, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 255, 0), 2)
-
-            cv.putText(frame, f"FPS: {int(fps)}", (10, 30),
-                       cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv.LINE_AA)
-            cv.imshow("Tracker", frame)
+        cv.putText(frame, f"FPS: {int(fps)}", (10, 30),
+                   cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv.LINE_AA)
+        cv.imshow("Tracker", frame)
+        
+        frame_count += 1
 
     cap.release()
     cv.destroyAllWindows()
